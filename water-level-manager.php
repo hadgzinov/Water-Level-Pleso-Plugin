@@ -44,7 +44,8 @@ class WaterLevelManager {
         register_setting('water_level_settings', 'water_level_water_body');
         register_setting('water_level_settings', 'water_level_normal');
         register_setting('water_level_settings', 'water_level_coordinates');
-        
+        register_setting('water_level_settings', 'water_level_ice_mode');
+
         // Устанавливаем значения по умолчанию при первой активации
         if (get_option('water_level_current') === false) {
             update_option('water_level_current', '92.90');
@@ -60,6 +61,9 @@ class WaterLevelManager {
         }
         if (get_option('water_level_coordinates') === false) {
             update_option('water_level_coordinates', '50.454078,30.583940');
+        }
+        if (get_option('water_level_ice_mode') === false) {
+            update_option('water_level_ice_mode', '0');
         }
     }
     
@@ -81,53 +85,80 @@ class WaterLevelManager {
         $water_body = get_option('water_level_water_body', 'Русанівська протока');
         $normal_level = get_option('water_level_normal', '91.50');
         $coordinates = get_option('water_level_coordinates', '50.454078,30.583940');
-        
+        $ice_mode = get_option('water_level_ice_mode', '0');
+
         ?>
         <div class="wrap">
             <h1>🌊 Управление уровнем воды</h1>
-            
+
             <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
                 <h2>Текущие показатели</h2>
-                <p><strong>Текущий уровень:</strong> <span id="current-display"><?php echo $current_level; ?></span> м</p>
-                <p><strong>Отклонение от нормы:</strong> 
-                    <span id="deviation-display" style="font-weight: bold;">
-                        <?php 
-                        $deviation = floatval($current_level) - floatval($normal_level);
-                        echo ($deviation >= 0 ? '+' : '') . number_format($deviation, 2) . ' м';
-                        ?>
-                    </span>
-                </p>
-                <p><strong>Статус:</strong> 
-                    <span id="status-display" style="padding: 5px 10px; border-radius: 5px; color: white;">
-                        <?php
-                        if ($current_level >= 92.70) {
-                            echo '<span style="background: #e74c3c;">КРИТИЧНИЙ</span>';
-                        } elseif ($current_level >= 91.50) {
-                            echo '<span style="background: #f39c12;">ПІДВИЩЕНИЙ</span>';
-                        } else {
-                            echo '<span style="background: #27ae60;">НОРМАЛЬНИЙ</span>';
-                        }
-                        ?>
-                    </span>
-                </p>
+                <?php if ($ice_mode === '1'): ?>
+                    <p><strong>Текущий уровень:</strong> <span id="current-display" style="color: #3498db; font-weight: bold;">❄️ ЛЬОДОСТАВ</span></p>
+                    <p><strong>Статус:</strong>
+                        <span id="status-display" style="padding: 5px 10px; border-radius: 5px; color: white;">
+                            <span style="background: #3498db;">❄️ ЛЬОДОСТАВ</span>
+                        </span>
+                    </p>
+                <?php else: ?>
+                    <p><strong>Текущий уровень:</strong> <span id="current-display"><?php echo $current_level; ?></span> м</p>
+                    <p><strong>Отклонение от нормы:</strong>
+                        <span id="deviation-display" style="font-weight: bold;">
+                            <?php
+                            $deviation = floatval($current_level) - floatval($normal_level);
+                            echo ($deviation >= 0 ? '+' : '') . number_format($deviation, 2) . ' м';
+                            ?>
+                        </span>
+                    </p>
+                    <p><strong>Статус:</strong>
+                        <span id="status-display" style="padding: 5px 10px; border-radius: 5px; color: white;">
+                            <?php
+                            if ($current_level >= 92.70) {
+                                echo '<span style="background: #e74c3c;">КРИТИЧНИЙ</span>';
+                            } elseif ($current_level >= 91.50) {
+                                echo '<span style="background: #f39c12;">ПІДВИЩЕНИЙ</span>';
+                            } else {
+                                echo '<span style="background: #27ae60;">НОРМАЛЬНИЙ</span>';
+                            }
+                            ?>
+                        </span>
+                    </p>
+                <?php endif; ?>
             </div>
             
             <form method="post" id="water-level-form">
                 <?php wp_nonce_field('water_level_nonce', 'water_level_nonce_field'); ?>
-                
+
                 <table class="form-table">
                     <tr>
+                        <th scope="row">
+                            <label for="water_level_ice_mode">❄️ Льодостав</label>
+                        </th>
+                        <td>
+                            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                                <input type="checkbox"
+                                       id="water_level_ice_mode"
+                                       name="water_level_ice_mode"
+                                       value="1"
+                                       <?php checked($ice_mode, '1'); ?>
+                                       style="width: 20px; height: 20px;" />
+                                <span>Увімкнути режим льодоставу</span>
+                            </label>
+                            <p class="description">При увімкненому режимі замість рівня води буде відображатися "Льодостав"</p>
+                        </td>
+                    </tr>
+                    <tr id="water-level-row">
                         <th scope="row">
                             <label for="water_level_current">Текущий уровень воды (м)</label>
                         </th>
                         <td>
-                            <input type="number" 
-                                   step="0.01" 
-                                   min="85.00" 
+                            <input type="number"
+                                   step="0.01"
+                                   min="85.00"
                                    max="100.00"
-                                   id="water_level_current" 
-                                   name="water_level_current" 
-                                   value="<?php echo esc_attr($current_level); ?>" 
+                                   id="water_level_current"
+                                   name="water_level_current"
+                                   value="<?php echo esc_attr($current_level); ?>"
                                    style="width: 200px;" />
                             <p class="description">Введите текущий уровень воды в метрах (например: 92.90)</p>
                         </td>
@@ -209,9 +240,24 @@ class WaterLevelManager {
         
         <script>
         jQuery(document).ready(function($) {
+            // Функция для переключения видимости поля уровня воды
+            function toggleWaterLevelField() {
+                if ($('#water_level_ice_mode').is(':checked')) {
+                    $('#water-level-row').hide();
+                } else {
+                    $('#water-level-row').show();
+                }
+            }
+
+            // Инициализация при загрузке
+            toggleWaterLevelField();
+
+            // Переключение при изменении чекбокса
+            $('#water_level_ice_mode').on('change', toggleWaterLevelField);
+
             $('#water-level-form').on('submit', function(e) {
                 e.preventDefault();
-                
+
                 var formData = {
                     action: 'update_water_level',
                     water_level_current: $('#water_level_current').val(),
@@ -219,35 +265,20 @@ class WaterLevelManager {
                     water_level_water_body: $('#water_level_water_body').val(),
                     water_level_normal: $('#water_level_normal').val(),
                     water_level_coordinates: $('#water_level_coordinates').val(),
+                    water_level_ice_mode: $('#water_level_ice_mode').is(':checked') ? '1' : '0',
                     nonce: $('#water_level_nonce_field').val()
                 };
-                
+
                 $('#save-status').html('<span style="color: #0073aa;">Сохранение...</span>');
-                
+
                 $.post(water_level_ajax.ajax_url, formData, function(response) {
                     if (response.success) {
                         $('#save-status').html('<span style="color: #00a32a;">✓ Данные успешно сохранены!</span>');
-                        
-                        // Обновляем отображение
-                        $('#current-display').text(formData.water_level_current);
-                        
-                        var deviation = parseFloat(formData.water_level_current) - parseFloat(formData.water_level_normal);
-                        $('#deviation-display').text((deviation >= 0 ? '+' : '') + deviation.toFixed(2) + ' м');
-                        
-                        // Обновляем статус
-                        var statusHtml = '';
-                        if (formData.water_level_current >= 92.70) {
-                            statusHtml = '<span style="background: #e74c3c; padding: 5px 10px; border-radius: 5px; color: white;">КРИТИЧНИЙ</span>';
-                        } else if (formData.water_level_current >= 91.50) {
-                            statusHtml = '<span style="background: #f39c12; padding: 5px 10px; border-radius: 5px; color: white;">ПІДВИЩЕНИЙ</span>';
-                        } else {
-                            statusHtml = '<span style="background: #27ae60; padding: 5px 10px; border-radius: 5px; color: white;">НОРМАЛЬНИЙ</span>';
-                        }
-                        $('#status-display').html(statusHtml);
-                        
+
+                        // Перезагружаем страницу для обновления отображения статуса
                         setTimeout(function() {
-                            $('#save-status').fadeOut();
-                        }, 3000);
+                            location.reload();
+                        }, 500);
                     } else {
                         $('#save-status').html('<span style="color: #d63638;">Ошибка сохранения!</span>');
                     }
@@ -268,21 +299,24 @@ class WaterLevelManager {
             wp_die('Недостаточно прав');
         }
         
-        $water_level = sanitize_text_field($_POST['water_level_current']);
-        $post_name = sanitize_text_field($_POST['water_level_post_name']);
-        $water_body = sanitize_text_field($_POST['water_level_water_body']);
-        $normal_level = sanitize_text_field($_POST['water_level_normal']);
-        $coordinates = sanitize_text_field($_POST['water_level_coordinates']);
-        
+        $water_level = sanitize_text_field(wp_unslash($_POST['water_level_current']));
+        $post_name = sanitize_text_field(wp_unslash($_POST['water_level_post_name']));
+        $water_body = sanitize_text_field(wp_unslash($_POST['water_level_water_body']));
+        $normal_level = sanitize_text_field(wp_unslash($_POST['water_level_normal']));
+        $coordinates = sanitize_text_field(wp_unslash($_POST['water_level_coordinates']));
+        $ice_mode = (!empty($_POST['water_level_ice_mode']) && $_POST['water_level_ice_mode'] === '1') ? '1' : '0';
+
         update_option('water_level_current', $water_level);
         update_option('water_level_post_name', $post_name);
         update_option('water_level_water_body', $water_body);
         update_option('water_level_normal', $normal_level);
         update_option('water_level_coordinates', $coordinates);
+        update_option('water_level_ice_mode', $ice_mode);
         update_option('water_level_last_update', current_time('mysql'));
-        
+
         wp_send_json_success(array(
             'level' => $water_level,
+            'ice_mode' => $ice_mode,
             'message' => 'Данные успешно обновлены'
         ));
     }
@@ -295,9 +329,10 @@ class WaterLevelManager {
             'water_body' => get_option('water_level_water_body', 'Русанівська протока'),
             'normal_level' => get_option('water_level_normal', '91.50'),
             'coordinates' => get_option('water_level_coordinates', '50.454078,30.583940'),
+            'ice_mode' => get_option('water_level_ice_mode', '0'),
             'last_update' => get_option('water_level_last_update', current_time('mysql'))
         );
-        
+
         wp_send_json_success($data);
     }
     
